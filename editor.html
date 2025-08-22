@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Harvester Highlights — Editor</title>
+  <style>
+    :root { --bg:#0b0e13; --card:#151a22; --muted:#91a0b6; --text:#eaf0ff; --accent:#a9d2ff; }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;padding:20px}
+    h1{margin:0 0 8px}
+    .meta{color:var(--muted);font-size:13px;margin:0 0 12px}
+    .toolbar{display:flex;gap:8px;margin:10px 0 14px;flex-wrap:wrap}
+    button{background:#1f2a3a;color:var(--text);border:1px solid #2b3a51;border-radius:10px;padding:8px 10px;cursor:pointer}
+    button:hover{filter:brightness(1.1)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+    .card{background:var(--card);border:1px solid #222a36;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px}
+    .muted{color:var(--muted)}
+    .tag{display:inline-block;background:#1e2632;color:var(--accent);border:1px solid #304155;padding:2px 8px;border-radius:20px;font-size:12px;margin-right:6px}
+    input[type="text"]{background:#0f131a;color:var(--text);border:1px solid #2b3646;border-radius:8px;padding:6px 8px;width:100%}
+  </style>
+</head>
+<body>
+  <h1>Harvester Highlights — Editor</h1>
+  <div class="meta" id="meta">Loading…</div>
+
+  <div class="toolbar">
+    <button id="regen">Regenerate dataset timestamp</button>
+    <button id="download">Download JSON</button>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <script type="module">
+    const $ = s => document.querySelector(s);
+    const nowISO = () => new Date().toISOString();
+    const parseISO = s => s ? new Date(s) : null;
+
+    let DATA = null;
+
+    async function load() {
+      const r = await fetch('highlights.ca.json', { cache: 'no-store' });
+      if (!r.ok) throw new Error('Could not load highlights.ca.json (HTTP ' + r.status + ')');
+      return await r.json();
+    }
+
+    function render(data) {
+      $('#meta').textContent = `generated_at_iso: ${data.generated_at_iso || '—'} • ttl_hours: ${data.ttl_hours ?? '—'}`;
+      const grid = $('#grid');
+      grid.innerHTML = '';
+
+      (data.tiles || []).forEach(tile => {
+        // ensure fields
+        if (tile.price_display === undefined) tile.price_display = 'TBD';
+        if (!('last_refreshed_iso' in tile)) tile.last_refreshed_iso = null;
+
+        const card = document.createElement('div');
+        card.className = 'card';
+
+        const titleEl = document.createElement('div');
+        titleEl.style.fontWeight = '600';
+        titleEl.textContent = tile.title || `${tile.route?.origin || '—'} → ${tile.route?.destination || '—'}`;
+
+        const routeEl = document.createElement('div');
+        routeEl.className = 'muted';
+        routeEl.textContent = `${tile.route?.origin || '—'} → ${tile.route?.destination || '—'}`;
+
+        const datesEl = document.createElement('div');
+        datesEl.className = 'muted';
+        datesEl.textContent = `Dates: ${tile.date_range?.from || '—'} → ${tile.date_range?.to || '—'}`;
+
+        const priceLabel = document.createElement('label');
+        priceLabel.className = 'muted';
+        priceLabel.textContent = 'Price:';
+
+        const priceInput = document.createElement('input');
+        priceInput.type = 'text';
+        priceInput.value = tile.price_display || '';
+        priceInput.placeholder = 'e.g., from $245 CAD';
+        priceInput.addEventListener('input', () => { tile.price_display = priceInput.value; });
+
+        const lastEl = document.createElement('div');
+        lastEl.className = 'muted';
+        lastEl.textContent = 'Last updated: ' + (tile.last_refreshed_iso ? new Date(tile.last_refreshed_iso).toLocaleString() : '—');
+
+        const tagsWrap = document.createElement('div');
+        (tile.tags || []).forEach(tag => {
+          const chip = document.createElement('span');
+          chip.className = 'tag';
+          chip.textContent = tag;
+          tagsWrap.appendChild(chip);
+        });
+
+        const actions = document.createElement('div');
+        const refreshBtn = document.createElement('button');
+        refreshBtn.textContent = 'Refresh';
+        refreshBtn.addEventListener('click', () => {
+          tile.last_refreshed_iso = nowISO();
+          lastEl.textContent = 'Last updated: ' + new Date(tile.last_refreshed_iso).toLocaleString();
+        });
+        actions.appendChild(refreshBtn);
+
+        card.append(titleEl, routeEl, datesEl, priceLabel, priceInput, lastEl, tagsWrap, actions);
+        grid.appendChild(card);
+      });
+    }
+
+    function downloadJSON(data) {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'highlights.ca.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+    }
+
+    // boot
+    load()
+      .then(d => { DATA = d; render(DATA); })
+      .catch(err => { $('#meta').textContent = 'Error: ' + err.message; });
+
+    // controls
+    $('#regen').addEventListener('click', () => {
+      if (!DATA) return;
+      DATA.generated_at_iso = nowISO();
+      render(DATA);
+    });
+
+    $('#download').addEventListener('click', () => {
+      if (!DATA) return;
+      downloadJSON(DATA);
+    });
+  </script>
+</body>
+</html>
