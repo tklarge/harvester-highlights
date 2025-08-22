@@ -6,14 +6,18 @@
   <title>Harvester Highlights — Canada</title>
   <style>
     :root { --bg:#0b0e13; --card:#151a22; --muted:#91a0b6; --text:#eaf0ff; --accent:#a9d2ff; --stale:#2a2f39; }
-    *{box-sizing:border-box} body{margin:0;padding:24px;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+    *{box-sizing:border-box}
+    body{margin:0;padding:24px;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
     header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
-    h1{margin:0;font-size:22px} .meta{color:var(--muted);font-size:14px}
+    h1{margin:0;font-size:22px}
+    .meta{color:var(--muted);font-size:14px}
     .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
     .card{background:var(--card);border:1px solid #222a36;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px}
     .card.stale{background:var(--stale);opacity:.95}
-    .title{font-weight:600;font-size:16px} .muted{color:var(--muted);font-size:14px}
-    .tags{display:flex;flex-wrap:wrap;gap:6px} .tag{background:#1e2632;color:var(--accent);border:1px solid #304155;padding:2px 8px;border-radius:20px;font-size:12px}
+    .title{font-weight:600;font-size:16px}
+    .muted{color:var(--muted);font-size:14px}
+    .tags{display:flex;flex-wrap:wrap;gap:6px}
+    .tag{background:#1e2632;color:#a9d2ff;border:1px solid #304155;padding:2px 8px;border-radius:20px;font-size:12px}
     footer{margin-top:18px;color:var(--muted);font-size:13px}
   </style>
 </head>
@@ -26,8 +30,70 @@
   <div id="grid" class="grid" aria-live="polite"></div>
   <footer>Cache policy: <span id="ttl"></span></footer>
 
-  <!-- budget guard -->
+  <!-- budget guard (okay if the file isn't present; it will just do nothing) -->
   <script type="module" src="quota-checker.js"></script>
 
   <script>
-  const $ = sel => document.query
+    const $ = sel => document.querySelector(sel);
+    const parseISO = s => s ? new Date(s) : null;
+    const addHours = (d,h) => { const x = new Date(d); x.setHours(x.getHours()+h); return x; };
+
+    // Show errors on page instead of failing silently
+    window.addEventListener('error', e => (
+      document.getElementById('meta').textContent = 'JS error: ' + e.message
+    ));
+    window.addEventListener('unhandledrejection', e => (
+      document.getElementById('meta').textContent =
+        'Load error: ' + (e.reason?.message || e.reason)
+    ));
+
+    async function loadJSONSmart() {
+      // Try relative first (same folder as index.html), then absolute from site root
+      const tries = ['highlights.ca.json', '/highlights.ca.json'];
+      let lastErr = null;
+      for (const url of tries) {
+        try {
+          const r = await fetch(url, { cache: 'no-store' });
+          if (!r.ok) throw new Error(`HTTP ${r.status} @ ${url}`);
+          return await r.json();
+        } catch (e) { lastErr = e; }
+      }
+      throw lastErr || new Error('Could not load highlights JSON');
+    }
+
+    function render(data){
+      const ttl = Number(data.ttl_hours||48);
+      const gen = parseISO(data.generated_at_iso);
+      const exp = gen ? addHours(gen, ttl) : null;
+      const stale = exp ? (new Date() > exp) : true;
+
+      $('#meta').textContent = gen ? `Generated: ${gen.toLocaleString()}` : 'Generated: —';
+      $('#ttl').textContent = `ttl_hours=${ttl} (expires ${exp ? exp.toLocaleString() : '—'})`;
+
+      const grid = $('#grid'); grid.innerHTML = '';
+      (data.tiles||[]).forEach(t=>{
+        const card = document.createElement('div');
+        card.className = 'card' + (stale ? ' stale':'');
+        card.innerHTML = `
+          <div class="title">${t.title}</div>
+          <div class="muted">${t.route?.origin||'—'} → ${t.route?.destination||'—'}</div>
+          <div class="muted">Dates: ${t.date_range?.from||'—'} → ${t.date_range?.to||'—'}</div>
+          <div class="muted">Price: ${t.price_display||'TBD'}</div>
+          <div class="muted">Last updated: ${t.last_refreshed_iso ? new Date(t.last_refreshed_iso).toLocaleString() : '—'}</div>
+          <div class="tags">${(t.tags||[]).map(x=>`<span class="tag">${x}</span>`).join(' ')}</div>`;
+        grid.appendChild(card);
+      });
+    }
+
+    (async ()=>{
+      try {
+        const data = await loadJSONSmart();
+        render(data);
+      } catch (e) {
+        $('#meta').textContent = 'Error: ' + (e.message || e);
+        console.error(e);
+      }
+    })();
+  </script>
+</body>
+</html>
