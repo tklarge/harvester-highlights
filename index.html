@@ -3,97 +3,208 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Harvester Highlights — Canada</title>
+  <title>Harvester Highlights</title>
   <style>
-    :root { --bg:#0b0e13; --card:#151a22; --muted:#91a0b6; --text:#eaf0ff; --accent:#a9d2ff; --stale:#2a2f39; }
+    :root{
+      --bg:#0b0e13; --card:#151a22; --muted:#91a0b6; --text:#eaf0ff; --accent:#9dd2ff;
+      --ring:#2b364c; --pill:#1e2633;
+    }
     *{box-sizing:border-box}
-    body{margin:0;padding:24px;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
-    header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
-    h1{margin:0;font-size:22px}
-    .meta{color:var(--muted);font-size:14px}
-    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
-    .card{background:var(--card);border:1px solid #222a36;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px}
-    .card.stale{background:var(--stale);opacity:.95}
-    .title{font-weight:600;font-size:16px}
-    .muted{color:var(--muted);font-size:14px}
-    .tags{display:flex;flex-wrap:wrap;gap:6px}
-    .tag{background:#1e2632;color:#a9d2ff;border:1px solid #304155;padding:2px 8px;border-radius:20px;font-size:12px}
-    footer{margin-top:18px;color:var(--muted);font-size:13px}
+    body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial}
+    a{color:var(--accent);text-decoration:none}
+    header{padding:20px}
+    h1{margin:0 0 6px}
+    .meta{color:var(--muted);font-size:13px;margin:6px 0 14px}
+    .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:0 20px 10px}
+    .toolbar select,.toolbar button{
+      background:#0f131a;border:1px solid var(--ring);color:var(--text);padding:8px 10px;border-radius:10px;
+    }
+    .grid{
+      display:grid;grid-template-columns:repeat(auto-fill, minmax(280px,1fr));
+      gap:14px;padding:0 20px 30px;max-width:1200px;margin:0 auto;
+    }
+    .card{
+      background:var(--card);border:1px solid var(--ring);border-radius:18px;padding:14px 14px 12px;
+      display:flex;flex-direction:column;gap:8px;min-height:170px;
+    }
+    .title{font-weight:600}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .muted{color:var(--muted)}
+    .pill{display:inline-block;background:var(--pill);border:1px solid var(--ring);border-radius:999px;padding:3px 8px;font-size:12px;margin:2px 6px 0 0}
+    .slug{font-size:12px;color:var(--muted)}
+    .footer{padding:14px 20px 34px;color:var(--muted);font-size:13px}
+    .err{border:1px solid #c74a5a;background:#2a0f16;color:#ffd8de;padding:12px;border-radius:10px;margin:0 20px 20px}
   </style>
 </head>
 <body>
   <header>
-    <h1>Harvester Highlights — Canada</h1>
-    <div class="meta" id="meta">Loading…</div>
+    <h1>Harvester Highlights</h1>
+    <div id="meta" class="meta"></div>
   </header>
 
-  <div id="grid" class="grid" aria-live="polite"></div>
-  <footer>Cache policy: <span id="ttl"></span></footer>
+  <div class="toolbar">
+    <label for="citySelect" class="muted">Dataset:</label>
+    <select id="citySelect" aria-label="Choose city dataset">
+      <option value="ca">Canada (combined)</option>
+      <option value="yvr">YVR — Vancouver</option>
+      <option value="yyz">YYZ — Toronto</option>
+      <option value="yul">YUL — Montréal</option>
+      <option value="yeg">YEG — Edmonton</option>
+      <option value="yyc">YYC — Calgary</option>
+    </select>
+    <button id="downloadBtn" title="Download current dataset JSON">Download JSON</button>
+    <span class="muted">•</span>
+    <a id="editorLink" href="/editor.html">Open Editor</a>
+  </div>
 
-  <!-- budget guard (okay if the file isn't present; it will just do nothing) -->
-  <script type="module" src="quota-checker.js"></script>
+  <div id="error" class="err" style="display:none"></div>
+  <main id="grid" class="grid" aria-live="polite"></main>
+  <div class="footer" id="footerNote"></div>
 
   <script>
-    const $ = sel => document.querySelector(sel);
-    const parseISO = s => s ? new Date(s) : null;
-    const addHours = (d,h) => { const x = new Date(d); x.setHours(x.getHours()+h); return x; };
+    // --- helpers ---
+    const qs = new URLSearchParams(location.search);
+    const allow = ['yvr','yyz','yul','yeg','yyc','ca'];
+    const chosen = (qs.get('city') || 'ca').toLowerCase();
+    const city = allow.includes(chosen) ? chosen : 'ca';
+    const DATA_URL = `/highlights.${city}.json?nocache=${Date.now()}`;
 
-    // Show errors on page instead of failing silently
-    window.addEventListener('error', e => (
-      document.getElementById('meta').textContent = 'JS error: ' + e.message
-    ));
-    window.addEventListener('unhandledrejection', e => (
-      document.getElementById('meta').textContent =
-        'Load error: ' + (e.reason?.message || e.reason)
-    ));
-
-    async function loadJSONSmart() {
-      // Try relative first (same folder as index.html), then absolute from site root
-      const tries = ['highlights.ca.json', '/highlights.ca.json'];
-      let lastErr = null;
-      for (const url of tries) {
-        try {
-          const r = await fetch(url, { cache: 'no-store' });
-          if (!r.ok) throw new Error(`HTTP ${r.status} @ ${url}`);
-          return await r.json();
-        } catch (e) { lastErr = e; }
+    const $ = (id)=>document.getElementById(id);
+    const fmtDate = (iso) => {
+      if(!iso) return '—';
+      const d = new Date(iso);
+      if (String(iso).length===10 && /^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+        // already YYYY-MM-DD
+        return iso;
       }
-      throw lastErr || new Error('Could not load highlights JSON');
-    }
+      return d.toISOString().slice(0,10);
+    };
 
-    function render(data){
-      const ttl = Number(data.ttl_hours||48);
-      const gen = parseISO(data.generated_at_iso);
-      const exp = gen ? addHours(gen, ttl) : null;
-      const stale = exp ? (new Date() > exp) : true;
+    // set toolbar state
+    $('citySelect').value = city;
+    $('citySelect').addEventListener('change', e => {
+      const v = e.target.value;
+      const p = new URLSearchParams(location.search);
+      if (v === 'ca') p.delete('city'); else p.set('city', v);
+      const q = p.toString();
+      location.href = location.pathname + (q ? `?${q}` : '');
+    });
+    $('editorLink').href = city==='ca' ? '/editor.html' : `/editor.html?city=${city}`;
+    $('downloadBtn').addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.href = DATA_URL.replace(/\?nocache=.*/,'');
+      a.download = `highlights.${city}.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+    });
 
-      $('#meta').textContent = gen ? `Generated: ${gen.toLocaleString()}` : 'Generated: —';
-      $('#ttl').textContent = `ttl_hours=${ttl} (expires ${exp ? exp.toLocaleString() : '—'})`;
-
-      const grid = $('#grid'); grid.innerHTML = '';
-      (data.tiles||[]).forEach(t=>{
-        const card = document.createElement('div');
-        card.className = 'card' + (stale ? ' stale':'');
-        card.innerHTML = `
-          <div class="title">${t.title}</div>
-          <div class="muted">${t.route?.origin||'—'} → ${t.route?.destination||'—'}</div>
-          <div class="muted">Dates: ${t.date_range?.from||'—'} → ${t.date_range?.to||'—'}</div>
-          <div class="muted">Price: ${t.price_display||'TBD'}</div>
-          <div class="muted">Last updated: ${t.last_refreshed_iso ? new Date(t.last_refreshed_iso).toLocaleString() : '—'}</div>
-          <div class="tags">${(t.tags||[]).map(x=>`<span class="tag">${x}</span>`).join(' ')}</div>`;
-        grid.appendChild(card);
-      });
-    }
-
-    (async ()=>{
+    // --- load & render ---
+    async function load() {
       try {
-        const data = await loadJSONSmart();
-        render(data);
-      } catch (e) {
-        $('#meta').textContent = 'Error: ' + (e.message || e);
-        console.error(e);
+        const res = await fetch(DATA_URL, { cache:'no-store' });
+        if(!res.ok) throw new Error(`HTTP ${res.status}`);
+        const raw = await res.json();
+
+        // normalize shapes: prefer object with tiles[], fallback to arrays/maps
+        let meta = {};
+        let tiles = [];
+        if (Array.isArray(raw)) {
+          tiles = raw;
+        } else if (raw && typeof raw === 'object') {
+          meta.ttl_hours = raw.ttl_hours ?? meta.ttl_hours;
+          meta.generated_at_iso = raw.generated_at_iso ?? raw.generated ?? meta.generated_at_iso;
+          if (Array.isArray(raw.tiles)) tiles = raw.tiles;
+          else if (Array.isArray(raw.items)) tiles = raw.items;
+          else if (raw.cities && raw.cities[city?.toUpperCase?.()]) {
+            const c = raw.cities[city.toUpperCase()];
+            tiles = Array.isArray(c.tiles) ? c.tiles : (Array.isArray(c) ? c : []);
+          }
+        }
+
+        $('meta').textContent =
+          `dataset: highlights.${city}.json • generated: ${fmtDate(meta.generated_at_iso)} • ttl: ${meta.ttl_hours ?? '—'}h`;
+
+        render(tiles);
+        $('footerNote').textContent = `${tiles.length} tile${tiles.length===1?'':'s'} • ${new Date().toLocaleString()}`;
+        $('error').style.display = 'none';
+      } catch (err) {
+        $('error').style.display = '';
+        $('error').textContent = `Failed to load ${DATA_URL.replace(/\?nocache=.*/,'')}: ${err.message}`;
+        $('meta').textContent = '';
+        $('grid').innerHTML = '';
+        $('footerNote').textContent = '';
       }
-    })();
+    }
+
+    function render(tiles){
+      const grid = $('grid');
+      grid.innerHTML = '';
+
+      // small sort to keep it stable by title
+      tiles = [...tiles].sort((a,b)=>String(a.title||'').localeCompare(String(b.title||'')));
+
+      for (const t of tiles){
+        const origin = t.route?.origin || t.origin || '';
+        const dest   = t.route?.destination || t.destination || '';
+        const from   = t.date_range?.from || t.from;
+        const to     = t.date_range?.to || t.to;
+        const price  = t.price_display ?? t.price ?? 'TBD';
+        const tags   = Array.isArray(t.tags) ? t.tags : [];
+
+        const card = document.createElement('section');
+        card.className = 'card';
+
+        const title = document.createElement('div');
+        title.className = 'title';
+        title.textContent = t.title || `${origin} → ${dest}`;
+        card.appendChild(title);
+
+        const r1 = document.createElement('div');
+        r1.className = 'row muted';
+        r1.textContent = `${origin || '—'} → ${dest || '—'}`;
+        card.appendChild(r1);
+
+        const r2 = document.createElement('div');
+        r2.className = 'row muted';
+        r2.textContent = `Dates: ${fmtDate(from)} → ${fmtDate(to)}`;
+        card.appendChild(r2);
+
+        const r3 = document.createElement('div');
+        r3.className = 'row';
+        const priceSpan = document.createElement('span');
+        priceSpan.innerHTML = `<strong>Price:</strong> ${price}`;
+        r3.appendChild(priceSpan);
+        card.appendChild(r3);
+
+        if (tags.length){
+          const tagRow = document.createElement('div');
+          for (const tag of tags){
+            const b = document.createElement('span');
+            b.className = 'pill';
+            b.textContent = tag;
+            tagRow.appendChild(b);
+          }
+          card.appendChild(tagRow);
+        }
+
+        if (t.slug){
+          const slug = document.createElement('div');
+          slug.className = 'slug';
+          slug.textContent = t.slug;
+          card.appendChild(slug);
+        }
+
+        grid.appendChild(card);
+      }
+
+      if (!tiles.length){
+        const empty = document.createElement('div');
+        empty.className = 'muted';
+        empty.textContent = 'No tiles in this dataset.';
+        grid.appendChild(empty);
+      }
+    }
+
+    load();
   </script>
 </body>
 </html>
