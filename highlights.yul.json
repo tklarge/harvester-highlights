@@ -1,0 +1,27 @@
+{
+  "ttl_hours": 48,
+  "generated_at_iso": "2025-08-21T00:00:00Z",
+  "tiles": [
+    {
+      "id": "YUL-CDG-latefall",
+      "title": "Montréal → Paris (Late Fall)",
+      "route": {
+        "origin": "YUL",
+        "destination": "CDG"
+      },
+      "date_range": {
+        "from": "2025-11-01",
+        "to": "2025-12-15"
+      },
+      "price_display": "TBD",
+      "source": "cached",
+      "last_refreshed_iso": null,
+      "slug": "yul-cdg-latefall",
+      "image_hint": "city_paris_eiffel",
+      "tags": [
+        "international",
+        "europe"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "ttl_hours": 48,
+  "generated_at_iso": "2025-08-21T00:00:00Z",
+  "tiles": [
+    {
+      "id": "YVR-HKG-fall",
+      "title": "Vancouver → Hong Kong (Fall)",
+      "route": {
+        "origin": "YVR",
+        "destination": "HKG"
+      },
+      "date_range": {
+        "from": "2025-10-01",
+        "to": "2025-12-10"
+      },
+      "price_display": "TBD",
+      "source": "cached",
+      "last_refreshed_iso": null,
+      "slug": "yvr-hkg-fall",
+      "image_hint": "city_hong_kong_harbor",
+      "tags": [
+        "international",
+        "asia",
+        "longhaul"
+      ]
+    },
+    {
+      "id": "YVR-MNL-fall",
+      "title": "Vancouver → Manila (Fall)",
+      "route": {
+        "origin": "YVR",
+        "destination": "MNL"
+      },
+      "date_range": {
+        "from": "2025-09-15",
+        "to": "2025-11-30"
+      },
+      "price_display": "TBD",
+      "source": "cached",
+      "last_refreshed_iso": null,
+      "slug": "yvr-mnl-fall",
+      "image_hint": "city_manila_skyline",
+      "tags": [
+        "international",
+        "asia",
+        "longhaul"
+      ]
+    },
+    {
+      "id": "YVR-OGG-winter",
+      "title": "Vancouver → Maui (Early Winter)",
+      "route": {
+        "origin": "YVR",
+        "destination": "OGG"
+      },
+      "date_range": {
+        "from": "2025-12-01",
+        "to": "2026-02-15"
+      },
+      "price_display": "TBD",
+      "source": "cached",
+      "last_refreshed_iso": null,
+      "slug": "yvr-ogg-winter",
+      "image_hint": "beach_maui",
+      "tags": [
+        "international",
+        "usa",
+        "sun"
+      ]
+    }
+  ]
+}

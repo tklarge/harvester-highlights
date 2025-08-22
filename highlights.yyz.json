@@ -1,0 +1,48 @@
+{
+  "ttl_hours": 48,
+  "generated_at_iso": "2025-08-21T00:00:00Z",
+  "tiles": [
+    {
+      "id": "YYZ-LAX-shoulder",
+      "title": "Toronto → Los Angeles (Shoulder Season)",
+      "route": {
+        "origin": "YYZ",
+        "destination": "LAX"
+      },
+      "date_range": {
+        "from": "2025-09-10",
+        "to": "2025-11-20"
+      },
+      "price_display": "TBD",
+      "source": "cached",
+      "last_refreshed_iso": null,
+      "slug": "yyz-lax-shoulder",
+      "image_hint": "city_los_angeles",
+      "tags": [
+        "international",
+        "usa"
+      ]
+    },
+    {
+      "id": "YYZ-CUN-winter",
+      "title": "Toronto → Cancun (Early Winter)",
+      "route": {
+        "origin": "YYZ",
+        "destination": "CUN"
+      },
+      "date_range": {
+        "from": "2025-12-01",
+        "to": "2026-02-28"
+      },
+      "price_display": "TBD",
+      "source": "cached",
+      "last_refreshed_iso": null,
+      "slug": "yyz-cun-winter",
+      "image_hint": "beach_cancun",
+      "tags": [
+        "international",
+        "sun"
+      ]
+    }
+  ]
+}
