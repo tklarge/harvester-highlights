@@ -73,10 +73,7 @@
     const fmtDate = (iso) => {
       if(!iso) return '—';
       const d = new Date(iso);
-      if (String(iso).length===10 && /^\d{4}-\d{2}-\d{2}$/.test(iso)) {
-        // already YYYY-MM-DD
-        return iso;
-      }
+      if (String(iso).length===10 && /^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso; // already YYYY-MM-DD
       return d.toISOString().slice(0,10);
     };
 
@@ -139,7 +136,6 @@
       const grid = $('grid');
       grid.innerHTML = '';
 
-      // small sort to keep it stable by title
       tiles = [...tiles].sort((a,b)=>String(a.title||'').localeCompare(String(b.title||'')));
 
       for (const t of tiles){
@@ -174,6 +170,13 @@
         priceSpan.innerHTML = `<strong>Price:</strong> ${price}`;
         r3.appendChild(priceSpan);
         card.appendChild(r3);
+
+        // Last updated (safe if field missing)
+        const updated = t.last_refreshed_iso || t.updated_at || t.updated || null;
+        const r4 = document.createElement('div');
+        r4.className = 'row muted';
+        r4.textContent = `Last updated: ${fmtDate(updated)}`;
+        card.appendChild(r4);
 
         if (tags.length){
           const tagRow = document.createElement('div');
