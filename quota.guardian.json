@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "generated_at_iso": "2025-08-21T00:00:00Z",
+  "budgets": { "search_tokens_per_day": 50000, "api_credits_per_day": 1000, "rpm": 30, "rps": 3 },
+  "thresholds": { "yellow": 0.60, "red": 0.80 },
+  "actions": { "on_yellow": "warn", "on_red": "stop" },
+  "messaging": {
+    "yellow": "Approaching daily/rate budget. Please slow down or narrow searches.",
+    "red": "Budget limit reached. New searches paused until reset or manual override."
+  }
+}
