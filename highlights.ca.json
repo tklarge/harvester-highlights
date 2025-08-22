@@ -1,0 +1,102 @@
+{
+  "ttl_hours": 48,
+  "generated_at_iso": "2025-08-21T00:00:00Z",
+  "tiles": [
+    {
+      "id": "YVR-HKG-fall",
+      "title": "Vancouver → Hong Kong (Fall)",
+      "route": {"origin": "YVR", "destination": "HKG"},
+      "date_range": {"from": "2025-10-01", "to": "2025-12-10"},
+      "price_display": "TBD",
+      "source": "cached",
+      "last_refreshed_iso": null,
+      "slug": "yvr-hkg-fall",
+      "image_hint": "city_hong_kong_harbor",
+      "tags": ["international", "asia", "longhaul"]
+    },
+    {
+      "id": "YVR-MNL-fall",
+      "title": "Vancouver → Manila (Fall)",
+      "route": {"origin": "YVR", "destination": "MNL"},
+      "date_range": {"from": "2025-09-15", "to": "2025-11-30"},
+      "price_display": "TBD",
+      "source": "cached",
+      "last_refreshed_iso": null,
+      "slug": "yvr-mnl-fall",
+      "image_hint": "city_manila_skyline",
+      "tags": ["international", "asia", "longhaul"]
+    },
+    {
+      "id": "YYZ-LAX-shoulder",
+      "title": "Toronto → Los Angeles (Shoulder Season)",
+      "route": {"origin": "YYZ", "destination": "LAX"},
+      "date_range": {"from": "2025-09-10", "to": "2025-11-20"},
+      "price_display": "TBD",
+      "source": "cached",
+      "last_refreshed_iso": null,
+      "slug": "yyz-lax-shoulder",
+      "image_hint": "city_los_angeles",
+      "tags": ["international", "usa"]
+    },
+    {
+      "id": "YYC-YYZ-fall",
+      "title": "Calgary → Toronto (Fall)",
+      "route": {"origin": "YYC", "destination": "YYZ"},
+      "date_range": {"from": "2025-09-01", "to": "2025-11-15"},
+      "price_display": "TBD",
+      "source": "cached",
+      "last_refreshed_iso": null,
+      "slug": "yyc-yyz-fall",
+      "image_hint": "city_toronto",
+      "tags": ["domestic", "canada"]
+    },
+    {
+      "id": "YUL-CDG-latefall",
+      "title": "Montréal → Paris (Late Fall)",
+      "route": {"origin": "YUL", "destination": "CDG"},
+      "date_range": {"from": "2025-11-01", "to": "2025-12-15"},
+      "price_display": "TBD",
+      "source": "cached",
+      "last_refreshed_iso": null,
+      "slug": "yul-cdg-latefall",
+      "image_hint": "city_paris_eiffel",
+      "tags": ["international", "europe"]
+    },
+    {
+      "id": "YEG-YYZ-shoulder",
+      "title": "Edmonton → Toronto (Shoulder Season)",
+      "route": {"origin": "YEG", "destination": "YYZ"},
+      "date_range": {"from": "2025-09-05", "to": "2025-10-30"},
+      "price_display": "TBD",
+      "source": "cached",
+      "last_refreshed_iso": null,
+      "slug": "yeg-yyz-shoulder",
+      "image_hint": "city_edmonton",
+      "tags": ["domestic", "canada"]
+    },
+    {
+      "id": "YVR-OGG-winter",
+      "title": "Vancouver → Maui (Early Winter)",
+      "route": {"origin": "YVR", "destination": "OGG"},
+      "date_range": {"from": "2025-12-01", "to": "2026-02-15"},
+      "price_display": "TBD",
+      "source": "cached",
+      "last_refreshed_iso": null,
+      "slug": "yvr-ogg-winter",
+      "image_hint": "beach_maui",
+      "tags": ["international", "usa", "sun"]
+    },
+    {
+      "id": "YYZ-CUN-winter",
+      "title": "Toronto → Cancun (Early Winter)",
+      "route": {"origin": "YYZ", "destination": "CUN"},
+      "date_range": {"from": "2025-12-01", "to": "2026-02-28"},
+      "price_display": "TBD",
+      "source": "cached",
+      "last_refreshed_iso": null,
+      "slug": "yyz-cun-winter",
+      "image_hint": "beach_cancun",
+      "tags": ["international", "sun"]
+    }
+  ]
+}
