@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Harvester Highlights — Status</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><text y='50%' x='50%' dominant-baseline='middle' text-anchor='middle' font-size='48'>#</text></svg>">
+  <style>
+    :root{
+      --bg:#0b0e13; --card:#151a22; --muted:#91a0b6; --text:#eaf0ff; --accent:#9dd2ff; --ring:#2b364c; --ok:#33d17a; --warn:#f8d14a; --bad:#ff7a7a;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial}
+    header{display:flex;align-items:center;gap:14px;padding:20px;max-width:1200px;margin:0 auto}
+    h1{margin:0;font-size:22px}
+    .muted{color:var(--muted);font-size:13px}
+    .toolbar{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
+    .btn{background:#0f131a;border:1px solid var(--ring);color:var(--text);padding:8px 12px;border-radius:10px;cursor:pointer}
+    .btn:hover{filter:brightness(1.1)}
+    main{max-width:1200px;margin:0 auto;padding:0 20px 32px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+    .card{background:var(--card);border:1px solid var(--ring);border-radius:16px;padding:14px 14px 12px;display:flex;flex-direction:column;gap:10px}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .title{font-weight:600}
+    .pill{display:inline-flex;align-items:center;gap:6px;background:#0f131a;border:1px solid var(--ring);padding:6px 8px;border-radius:999px;font-size:12px;color:var(--text);text-decoration:none}
+    .ok{color:var(--ok);border-color:rgba(51,209,122,.3)}
+    .warn{color:var(--warn);border-color:rgba(248,209,74,.35)}
+    .bad{color:var(--bad);border-color:rgba(255,122,122,.35)}
+    .links{display:flex;gap:8px;flex-wrap:wrap}
+    code{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;font-size:12px;color:var(--muted)}
+    footer{max-width:1200px;margin:0 auto;padding:12px 20px;color:var(--muted);font-size:12px}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Harvester Highlights — Status</h1>
+    <span class="muted" id="updated">loading…</span>
+    <div class="toolbar">
+      <button class="btn" id="refresh">Refresh</button>
+      <button class="btn" id="dlAll">Download all JSONs</button>
+      <a class="btn" href="./index.html">Home</a>
+      <a class="btn" href="./editor.html">Open Editor</a>
+    </div>
+  </header>
+
+  <main>
+    <div class="grid" id="grid"></div>
+  </main>
+
+  <footer>
+    Tip: add <code>?v=123</code> to URLs to bust cache when spot-checking.
+  </footer>
+
+  <script>
+    const DATASETS = [
+      { key: 'ca',  label: 'Canada (combined)' },
+      { key: 'yvr', label: 'YVR — Vancouver' },
+      { key: 'yyz', label: 'YYZ — Toronto' },
+      { key: 'yul', label: 'YUL — Montréal' },
+      { key: 'yeg', label: 'YEG — Edmonton' },
+      { key: 'yyc', label: 'YYC — Calgary' },
+    ];
+
+    const $grid = document.getElementById('grid');
+    const $updated = document.getElementById('updated');
+    const nowISO = new Date().toISOString();
+    $updated.textContent = `Checked at ${nowISO}`;
+
+    const qv = (url) => `${url}${url.includes('?')?'&':'?'}v=${Date.now()}`;
+    const fmt = (d) => new Date(d).toLocaleString();
+
+    function healthClass(hoursLeft){
+      if (hoursLeft >= 12) return 'ok';
+      if (hoursLeft > 0) return 'warn';
+      return 'bad';
+    }
+
+    function hoursLeft(generatedISO, ttlHours){
+      try{
+        const gen = new Date(generatedISO);
+        const expires = new Date(gen.getTime() + ttlHours*3600*1000);
+        return Math.round((expires - Date.now())/3600e3);
+      }catch{ return -999; }
+    }
+
+    async function fetchStatus(key){
+      const url = `/highlights.${key}.json`;
+      try{
+        const res = await fetch(qv(url));
+        if(!res.ok) throw new Error(res.status + ' ' + res.statusText);
+        const json = await res.json();
+        const tiles =
+          Array.isArray(json.tiles) ? json.tiles :
+          (json.cities?.[key.toUpperCase()]?.tiles || []);
+        const ttl = json.ttl_hours ?? 48;
+        const gen = json.generated_at_iso ?? null;
+        const left = gen ? hoursLeft(gen, ttl) : null;
+        return { ok:true, url, tilesCount: tiles.length, ttl, generated: gen, left };
+      }catch(err){
+        return { ok:false, url, err: String(err) };
+      }
+    }
+
+    function card({key,label,status}){
+      const div = document.createElement('div');
+      div.className = 'card';
+      if(status.ok){
+        const cls = healthClass(status.left ?? -999);
+        div.innerHTML = `
+          <div class="row title">${label}</div>
+          <div class="row">
+            <span class="pill">Tiles: <strong>${status.tilesCount}</strong></span>
+            <span class="pill">TTL: ${status.ttl}h</span>
+            <span class="pill ${cls}">
+              ${status.left !== null ? `Hours left: ${status.left}` : 'Hours left: n/a'}
+            </span>
+          </div>
+          <div class="row">
+            <span class="muted">Generated: ${status.generated ? fmt(status.generated) : 'n/a'}</span>
+          </div>
+          <div class="links">
+            <a class="pill" href="${status.url}">JSON</a>
+            <a class="pill" href="./index.html?city=${key}">View site</a>
+            <a class="pill" href="./editor.html?city=${key}">Editor</a>
+          </div>
+        `;
+      }else{
+        div.innerHTML = `
+          <div class="row title">${label}</div>
+          <div class="row"><span class="pill bad">ERROR</span></div>
+          <div class="row"><code>${status.err ?? 'Unknown error'}</code></div>
+          <div class="links">
+            <a class="pill" href="${status.url}">Try JSON</a>
+            <a class="pill" href="./editor.html?city=${key}">Editor</a>
+          </div>
+        `;
+      }
+      return div;
+    }
+
+    async function load(){
+      $grid.innerHTML = '';
+      const results = await Promise.all(
+        DATASETS.map(async d => {
+          const status = await fetchStatus(d.key);
+          return { ...d, status };
+        })
+      );
+      results.forEach(r => $grid.appendChild(card(r)));
+    }
+
+    async function downloadAll(){
+      const allow = confirm('Download all per-city JSONs now? (Your browser may prompt to allow multiple downloads.)');
+      if(!allow) return;
+      for(const d of DATASETS){
+        const u = `/highlights.${d.key}.json`;
+        try{
+          const res = await fetch(qv(u));
+          if(!res.ok) continue;
+          const blob = await res.blob();
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = `highlights.${d.key}.json`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(a.href);
+          await new Promise(r => setTimeout(r, 150));
+        }catch{}
+      }
+    }
+
+    document.getElementById('refresh').addEventListener('click', load);
+    document.getElementById('dlAll').addEventListener('click', downloadAll);
+
+    load();
+  </script>
+</body>
+</html>
