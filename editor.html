@@ -35,7 +35,9 @@
   </select>
 
   <button id="regenBtn">Regenerate dataset timestamp</button>
+  <button id="reloadBtn">Reload dataset</button>
   <button id="downloadBtn">Download JSON</button>
+  <button id="splitBtn">Split combined → per-city</button>
   <span class="muted">•</span>
   <a href="/" style="color:var(--accent)">View site</a>
 </div>
@@ -45,165 +47,17 @@
 
 <script>
   // ---- params / dataset url
-  const qs = new URLSearchParams(location.search);
   const allow = ['ca','yvr','yyz','yul','yeg','yyc'];
-  const chosen = (qs.get('city')||'ca').toLowerCase();
-  const city = allow.includes(chosen) ? chosen : 'ca';
-  const DATA_URL = `/highlights.${city}.json?nocache=${Date.now()}`;
+  const paramCity = () => {
+    const qs = new URLSearchParams(location.search);
+    const c = (qs.get('city')||'ca').toLowerCase();
+    return allow.includes(c) ? c : 'ca';
+  };
+  const buildUrl = () => `/highlights.${paramCity()}.json?nocache=${Date.now()}`;
 
   // ---- helpers
   const $ = id => document.getElementById(id);
-  const fmtDate = iso => {
-    if(!iso) return '—';
-    if (/^\d{4}-\d{2}-\d{2}$/.test(String(iso))) return iso;
-    return new Date(iso).toISOString().slice(0,10);
-  };
+  const fmtDate = iso => (!iso ? '—' : (/^\d{4}-\d{2}-\d{2}$/.test(String(iso)) ? iso : new Date(iso).toISOString().slice(0,10)));
   const nowISO = () => new Date().toISOString();
 
-  $('citySelect').value = city;
-  $('citySelect').addEventListener('change', e => {
-    const v = e.target.value;
-    const p = new URLSearchParams(location.search);
-    if (v==='ca') p.delete('city'); else p.set('city', v);
-    location.href = location.pathname + (p.toString()?`?${p}`:'');
-  });
-
-  $('regenBtn').addEventListener('click', () => {
-    data.generated_at_iso = nowISO();
-    render();
-  });
-
-  $('downloadBtn').addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `highlights.${city}.json`;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(()=>URL.revokeObjectURL(a.href), 500);
-  });
-
-  // ---- load
-  let data = { ttl_hours: 48, generated_at_iso: nowISO(), tiles: [] };
-
-  async function load(){
-    try{
-      const res = await fetch(DATA_URL, {cache:'no-store'});
-      if(!res.ok) throw new Error(`HTTP ${res.status}`);
-      const raw = await res.json();
-      if (Array.isArray(raw)) data.tiles = raw;
-      else if (raw && typeof raw === 'object'){
-        data.ttl_hours = raw.ttl_hours ?? data.ttl_hours;
-        data.generated_at_iso = raw.generated_at_iso ?? raw.generated ?? data.generated_at_iso;
-        data.tiles = Array.isArray(raw.tiles) ? raw.tiles : (Array.isArray(raw.items) ? raw.items : []);
-      }
-      $('error').style.display = 'none';
-    }catch(err){
-      $('error').style.display = '';
-      $('error').textContent = `Could not load ${DATA_URL.replace(/\?nocache=.*/,'')}: ${err.message}. Using a fresh empty dataset.`;
-      // keep default empty data
-    }
-    render();
-  }
-
-  function bindInput(el, obj, key, transform = v=>v){
-    el.value = obj[key] ?? '';
-    el.addEventListener('input', ()=>{ obj[key] = transform(el.value); updateMeta(); });
-  }
-  function updateMeta(){
-    $('meta').textContent = `dataset: highlights.${city}.json • generated: ${fmtDate(data.generated_at_iso)} • ttl: ${data.ttl_hours}h • tiles: ${data.tiles.length}`;
-  }
-
-  function render(){
-    const grid = $('grid'); grid.innerHTML = '';
-    updateMeta();
-
-    // keep a stable order
-    data.tiles = [...data.tiles].sort((a,b)=>String(a.title||'').localeCompare(String(b.title||'')));
-
-    data.tiles.forEach((t, idx) => {
-      t.route = t.route || {};
-      t.date_range = t.date_range || {};
-
-      const card = document.createElement('section'); card.className = 'card';
-
-      const title = document.createElement('div');
-      title.innerHTML = `<label>Title</label>`;
-      const titleInput = document.createElement('input');
-      bindInput(titleInput, t, 'title');
-      title.appendChild(titleInput);
-      card.appendChild(title);
-
-      const row1 = document.createElement('div'); row1.className = 'row';
-      const oWrap = document.createElement('div');
-      oWrap.innerHTML = `<label>Origin</label>`;
-      const o = document.createElement('input');
-      o.placeholder = 'YVR'; o.value = t.route.origin || t.origin || '';
-      o.addEventListener('input', ()=>{ t.route.origin = o.value.toUpperCase(); updateMeta(); });
-      oWrap.appendChild(o); row1.appendChild(oWrap);
-
-      const dWrap = document.createElement('div');
-      dWrap.innerHTML = `<label>Destination</label>`;
-      const d = document.createElement('input');
-      d.placeholder = 'HKG'; d.value = t.route.destination || t.destination || '';
-      d.addEventListener('input', ()=>{ t.route.destination = d.value.toUpperCase(); updateMeta(); });
-      dWrap.appendChild(d); row1.appendChild(dWrap);
-      card.appendChild(row1);
-
-      const row2 = document.createElement('div'); row2.className = 'row';
-      const fromW = document.createElement('div'); fromW.innerHTML = `<label>From</label>`;
-      const from = document.createElement('input'); from.type='date';
-      from.value = fmtDate(t.date_range.from || t.from || '');
-      from.addEventListener('change', ()=>{ t.date_range.from = from.value; updateMeta(); });
-      fromW.appendChild(from); row2.appendChild(fromW);
-
-      const toW = document.createElement('div'); toW.innerHTML = `<label>To</label>`;
-      const to = document.createElement('input'); to.type='date';
-      to.value = fmtDate(t.date_range.to || t.to || '');
-      to.addEventListener('change', ()=>{ t.date_range.to = to.value; updateMeta(); });
-      toW.appendChild(to); row2.appendChild(toW);
-      card.appendChild(row2);
-
-      const row3 = document.createElement('div'); row3.innerHTML = `<label>Price (display)</label>`;
-      const price = document.createElement('input'); price.placeholder='TBD';
-      bindInput(price, t, 'price_display');
-      row3.appendChild(price); card.appendChild(row3);
-
-      const row4 = document.createElement('div'); row4.innerHTML = `<label>Tags (comma separated)</label>`;
-      const tags = document.createElement('input'); tags.placeholder='international, asia, longhaul';
-      tags.value = Array.isArray(t.tags) ? t.tags.join(', ') : '';
-      tags.addEventListener('input', ()=>{ t.tags = tags.value.split(',').map(s=>s.trim()).filter(Boolean); updateMeta(); });
-      row4.appendChild(tags); card.appendChild(row4);
-
-      const row5 = document.createElement('div'); row5.className='row';
-      const refreshBtn = document.createElement('button');
-      refreshBtn.textContent = 'Stamp last updated';
-      refreshBtn.addEventListener('click', ()=>{ t.last_refreshed_iso = nowISO(); alert('Stamped.'); });
-      row5.appendChild(refreshBtn);
-
-      const removeBtn = document.createElement('button');
-      removeBtn.textContent = 'Remove tile';
-      removeBtn.addEventListener('click', ()=>{ data.tiles.splice(idx,1); render(); });
-      row5.appendChild(removeBtn);
-
-      card.appendChild(row5);
-      grid.appendChild(card);
-    });
-
-    // Add-new tile card
-    const add = document.createElement('section'); add.className = 'card';
-    const btn = document.createElement('button'); btn.textContent = 'Add new tile';
-    btn.addEventListener('click', ()=>{
-      data.tiles.push({
-        id: `tile-${Date.now()}`, title: '', route:{origin:'',destination:''},
-        date_range:{from:'',to:''}, price_display:'TBD', tags:[]
-      });
-      render();
-    });
-    add.appendChild(btn); $('grid').appendChild(add);
-  }
-
-  // kick it
-  load();
-</script>
-</body>
-</html>
+  /
