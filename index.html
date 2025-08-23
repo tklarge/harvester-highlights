@@ -4,47 +4,51 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Harvester Highlights</title>
-
-  <!-- Favicon (inline SVG emoji) -->
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50%25' x='50%25' dominant-baseline='middle' text-anchor='middle' font-size='48'%3E%E2%9C%88%EF%B8%8F%3C/text%3E%3C/svg%3E">
+  <!-- Tiny inline favicon to silence 404s -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50%25' x='50%25' text-anchor='middle' dominant-baseline='middle' font-size='48'%3E✈️%3C/text%3E%3C/svg%3E">
 
   <style>
     :root{
-      --bg:#0b0e13; --card:#151a22; --muted:#91a0b6; --text:#eaf0ff;
-      --accent:#9dd2ff; --ring:#2b364c; --pill:#1e2633;
+      --bg:#0b0e13; --card:#151a22; --muted:#91a0b6; --text:#eaf0ff; --accent:#9dd2ff;
+      --ring:#2b364c; --pill:#1e2633;
     }
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--text);
-      font:16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial}
+    body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial}
     a{color:var(--accent);text-decoration:none}
     header{padding:20px}
     h1{margin:0 0 6px}
     .meta{color:var(--muted);font-size:13px;margin:6px 0 14px}
-    .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:0 20px 16px}
-    .toolbar select,.toolbar button{
-      background:#0f131a;border:1px solid var(--ring);color:var(--text);
+    .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:0 20px 6px}
+    select,.btn{
+      background:#0f151a;border:1px solid var(--ring);color:var(--text);
       padding:8px 10px;border-radius:10px;cursor:pointer
     }
-    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
-      gap:14px;padding:0 20px 30px;max-width:1200px;margin:0 auto}
-    .card{background:var(--card);border:1px solid var(--ring);border-radius:18px;
-      padding:14px 14px 12px;display:flex;flex-direction:column;gap:8px;min-height:170px}
+    .btn:hover{filter:brightness(1.1)}
+    .grid{
+      display:grid;grid-template-columns:repeat(auto-fill, minmax(300px,1fr));
+      gap:14px;padding:0 20px 30px;max-width:1200px;margin:0 auto
+    }
+    .card{background:var(--card);border:1px solid var(--ring);border-radius:18px;padding:14px 14px 12px;display:flex;flex-direction:column;gap:9px;min-height:170px}
+    .title{font-size:18px;font-weight:620}
+    .row{display:flex;gap:8px;flex-wrap:wrap}
     .muted{color:var(--muted)}
-    .row{display:flex;gap:8px}
-    .tag{display:inline-block;background:var(--pill);color:var(--accent);
-      border:1px solid #384355;border-radius:20px;padding:3px 8px;font-size:12px;margin-right:6px}
-    footer{color:var(--muted);font-size:12px;text-align:center;padding:18px}
+    .pill{display:inline-flex;align-items:center;background:var(--pill);border:1px solid var(--ring);
+          border-radius:18px;padding:4px 8px;font-size:12px}
+    .status{padding:10px 20px 0;color:var(--muted);font-size:13px}
+    .empty{opacity:.7;padding:40px 20px;text-align:center}
+    footer{padding:14px 20px 24px;color:var(--muted);font-size:12px}
+    .right{margin-left:auto}
   </style>
 </head>
 <body>
   <header>
     <h1>Harvester Highlights</h1>
-    <div id="metaLine" class="meta">dataset: —</div>
+    <div id="banner" class="meta">loading…</div>
   </header>
 
   <div class="toolbar">
-    <label class="muted">Dataset:</label>
-    <select id="citySelect" aria-label="Dataset">
+    <label for="city" class="muted">Dataset:</label>
+    <select id="city">
       <option value="ca">Canada (combined)</option>
       <option value="yvr">YVR — Vancouver</option>
       <option value="yyz">YYZ — Toronto</option>
@@ -52,85 +56,31 @@
       <option value="yeg">YEG — Edmonton</option>
       <option value="yyc">YYC — Calgary</option>
     </select>
-    <button id="dlBtn" title="Download the currently loaded JSON">Download JSON</button>
-    <a id="openEditor" class="muted" href="#">• Open Editor</a>
+
+    <a id="downloadBtn" class="btn" href="#" download>Download JSON</a>
+    <a id="openEditor" class="btn" href="#">Open Editor</a>
+    <span class="right muted" id="statusNote"></span>
   </div>
 
-  <main class="grid" id="grid" aria-live="polite"></main>
-  <footer>Built with ♥ — cached JSON served by Vercel</footer>
+  <div id="grid" class="grid" aria-live="polite"></div>
+  <div id="empty" class="empty" hidden>No tiles in this dataset.</div>
+
+  <footer>
+    Tips: Use the dropdown to switch datasets. “Open Editor” jumps to the same city’s editor.
+  </footer>
 
   <script>
-    (async () => {
-      // --- query param helpers
-      const qs = new URLSearchParams(location.search);
-      const city = (qs.get('city') || 'ca').toLowerCase();
-      const bust = qs.get('v') ? ('&v=' + encodeURIComponent(qs.get('v'))) : '';
+    // --- helpers
+    const $ = sel => document.querySelector(sel);
+    const fmtDate = s => {
+      try{
+        if(!s) return '—';
+        const d = new Date(s);
+        if (Number.isNaN(d)) return s;
+        return d.toISOString().slice(0,10);
+      }catch{ return s || '—'; }
+    };
 
-      // reflect selection in UI
-      const sel = document.getElementById('citySelect');
-      sel.value = city;
-      sel.addEventListener('change', () => {
-        const p = new URL(location.href);
-        p.searchParams.set('city', sel.value);
-        p.searchParams.set('v', Date.now()); // bust cache
-        location.href = p.toString();
-      });
-
-      // editor link
-      const ed = document.getElementById('openEditor');
-      ed.href = `/editor.html?city=${encodeURIComponent(city)}&v=${Date.now()}`;
-
-      // fetch current dataset
-      const url = `/highlights.${city}.json?nocache=${Date.now()}${bust}`;
-      const res = await fetch(url);
-      if (!res.ok) {
-        document.getElementById('metaLine').textContent = `dataset: highlights.${city}.json — failed to load (${res.status})`;
-        return;
-      }
-      const data = await res.json();
-
-      // meta line
-      const tiles = Array.isArray(data.tiles) ? data.tiles : (Array.isArray(data.items) ? data.items : []);
-      const gen = data.generated_at_iso || '—';
-      const ttl = data.ttl_hours ?? '—';
-      document.getElementById('metaLine').textContent =
-        `dataset: highlights.${city}.json • generated: ${gen} • ttl: ${ttl}h • tiles: ${tiles.length}`;
-
-      // render tiles
-      const grid = document.getElementById('grid');
-      grid.innerHTML = '';
-      for (const t of tiles) {
-        const origin = t.route?.origin || '';
-        const dest = t.route?.destination || '';
-        const from = t.date_range?.from || '';
-        const to   = t.date_range?.to || '';
-        const price = t.price_display || 'TBD';
-        const tags = Array.isArray(t.tags) ? t.tags : [];
-
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.innerHTML = `
-          <div class="muted">${(t.id || '').toString()}</div>
-          <strong style="font-size:18px">${t.title || `${origin} → ${dest}`}</strong>
-          <div class="row"><div class="muted">Dates:</div> <div>${from} → ${to}</div></div>
-          <div class="row"><div class="muted">Price:</div> <div><strong>${price}</strong></div></div>
-          <div class="row"><div class="muted">Last updated:</div> <div>${t.last_refreshed_iso || '—'}</div></div>
-          <div>${tags.map(x => `<span class="tag">${x}</span>`).join('')}</div>
-        `;
-        grid.appendChild(card);
-      }
-
-      // download button
-      document.getElementById('dlBtn').addEventListener('click', () => {
-        const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
-        const a = Object.assign(document.createElement('a'), {
-          href: URL.createObjectURL(blob),
-          download: `highlights.${city}.json`
-        });
-        document.body.appendChild(a); a.click(); a.remove();
-        setTimeout(()=>URL.revokeObjectURL(a.href), 500);
-      });
-    })();
-  </script>
-</body>
-</html>
+    // Read ?city from URL or default
+    const params = new URLSearchParams(location.search);
+    const initialCity = (params.get('city') |
