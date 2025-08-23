@@ -1,269 +1,273 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Harvester Highlights — Editor</title>
-<style>
-  :root{--bg:#0b0e13;--card:#151a22;--muted:#91a0b6;--text:#eaf0ff;--accent:#9dd2ff;--ring:#2b364c;}
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
-  header{padding:20px} h1{margin:0 0 6px} .meta{color:var(--muted);font-size:13px}
-  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:0 20px 16px}
-  .toolbar select,.toolbar button{background:#0f131a;border:1px solid var(--ring);color:var(--text);padding:8px 10px;border-radius:10px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;padding:0 20px 40px;max-width:1200px;margin:0 auto}
-  .card{background:var(--card);border:1px solid var(--ring);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:10px}
-  label{font-size:12px;color:var(--muted)} input,textarea{width:100%;background:#0f131a;color:var(--text);border:1px solid var(--ring);border-radius:10px;padding:8px}
-  .row{display:flex;gap:8px} .row > *{flex:1} .muted{color:var(--muted)} .err{margin:0 20px 16px;background:#2a0f16;color:#ffd8de;border:1px solid #c74a5a;padding:10px;border-radius:10px}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Harvester Highlights — Editor</title>
+
+  <!-- Favicon (inline SVG emoji) -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50%25' x='50%25' dominant-baseline='middle' text-anchor='middle' font-size='48'%3E%E2%9C%88%EF%B8%8F%3C/text%3E%3C/svg%3E">
+
+  <style>
+    :root{
+      --bg:#0b0e13; --card:#151a22; --muted:#91a0b6; --text:#eaf0ff;
+      --accent:#9dd2ff; --ring:#2b364c; --pill:#1e2633;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);
+      font:16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial}
+    a{color:var(--accent);text-decoration:none}
+    h1{margin:0 0 6px}
+    header{padding:20px}
+    .meta{color:var(--muted);font-size:13px;margin:6px 0 14px}
+    .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:0 20px 16px}
+    .toolbar select,.toolbar button{
+      background:#0f131a;border:1px solid var(--ring);color:var(--text);
+      padding:8px 10px;border-radius:10px;cursor:pointer
+    }
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));
+      gap:14px;padding:0 20px 30px;max-width:1200px;margin:0 auto}
+    .card{background:var(--card);border:1px solid var(--ring);border-radius:18px;
+      padding:14px;display:flex;flex-direction:column;gap:10px}
+    label{font-size:12px;color:var(--muted)}
+    input[type="text"], input[type="date"]{
+      width:100%;background:#0f131a;border:1px solid var(--ring);color:var(--text);
+      border-radius:10px;padding:6px 8px
+    }
+    .row{display:flex;gap:8px}
+    .row > *{flex:1}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    .tag{display:inline-block;background:var(--pill);color:var(--accent);
+      border:1px solid #384355;border-radius:20px;padding:3px 8px;font-size:12px;margin-right:6px}
+    .muted{color:var(--muted)}
+    footer{color:var(--muted);font-size:12px;text-align:center;padding:18px}
+    .err{margin:0 20px 16px;background:#2a0f16;color:#ffd8de;border:1px solid #7a2a3a;padding:10px;border-radius:10px}
+  </style>
 </head>
 <body>
-<header>
-  <h1>Harvester Highlights — Editor</h1>
-  <div id="meta" class="meta"></div>
-</header>
+  <header>
+    <h1>Harvester Highlights — Editor</h1>
+    <div id="metaLine" class="meta">dataset: —</div>
+  </header>
 
-<div class="toolbar">
-  <label for="citySelect" class="muted">Dataset:</label>
-  <select id="citySelect">
-    <option value="ca">Canada (combined)</option>
-    <option value="yvr">YVR — Vancouver</option>
-    <option value="yyz">YYZ — Toronto</option>
-    <option value="yul">YUL — Montréal</option>
-    <option value="yeg">YEG — Edmonton</option>
-    <option value="yyc">YYC — Calgary</option>
-  </select>
+  <div class="toolbar">
+    <label class="muted">Dataset:</label>
+    <select id="citySelect" aria-label="Dataset">
+      <option value="ca">Canada (combined)</option>
+      <option value="yvr">YVR — Vancouver</option>
+      <option value="yyz">YYZ — Toronto</option>
+      <option value="yul">YUL — Montréal</option>
+      <option value="yeg">YEG — Edmonton</option>
+      <option value="yyc">YYC — Calgary</option>
+    </select>
 
-  <button id="regenBtn">Regenerate dataset timestamp</button>
-  <button id="reloadBtn">Reload dataset</button>
-  <button id="downloadBtn">Download JSON</button>
-  <button id="splitBtn">Split combined → per-city</button>
-  <span class="muted">•</span>
-  <a href="/" style="color:var(--accent)">View site</a>
-</div>
+    <button id="regenBtn">Regenerate dataset timestamp</button>
+    <button id="downloadBtn">Download JSON</button>
+    <a id="viewSite" class="muted" href="#">• View site</a>
+  </div>
 
-<div id="error" class="err" style="display:none"></div>
-<main id="grid" class="grid" aria-live="polite"></main>
+  <div id="errorBox" class="err" style="display:none"></div>
+  <main id="grid" class="grid" aria-live="polite"></main>
 
-<script>
-  // ---- params / dataset url
-  const allow = ['ca','yvr','yyz','yul','yeg','yyc'];
-  const paramCity = () => {
-    const qs = new URLSearchParams(location.search);
-    const c = (qs.get('city')||'ca').toLowerCase();
-    return allow.includes(c) ? c : 'ca';
-  };
-  const buildUrl = () => `/highlights.${paramCity()}.json?nocache=${Date.now()}`;
+  <div style="padding:0 20px 30px;max-width:1200px;margin:0 auto">
+    <div class="card">
+      <strong>Add new tile</strong>
+      <div class="row">
+        <div><label>Title</label><input id="new_title" type="text" placeholder="City A → City B (Season)"></div>
+        <div><label>Origin</label><input id="new_origin" type="text" placeholder="YYY"></div>
+        <div><label>Destination</label><input id="new_dest" type="text" placeholder="ZZZ"></div>
+      </div>
+      <div class="row">
+        <div><label>From</label><input id="new_from" type="date"></div>
+        <div><label>To</label><input id="new_to" type="date"></div>
+      </div>
+      <div class="row">
+        <div><label>Price (display)</label><input id="new_price" type="text" placeholder="TBD"></div>
+        <div><label>Tags (comma separated)</label><input id="new_tags" type="text" placeholder="domestic, canada"></div>
+      </div>
+      <div class="actions">
+        <button id="addBtn">Add tile</button>
+      </div>
+    </div>
+  </div>
 
-  // ---- helpers
-  const $ = id => document.getElementById(id);
-  const fmtDate = iso => (!iso ? '—' : (/^\d{4}-\d{2}-\d{2}$/.test(String(iso)) ? iso : new Date(iso).toISOString().slice(0,10)));
-  const nowISO = () => new Date().toISOString();
+  <footer>Editor saves by downloading JSON; upload to GitHub to publish.</footer>
 
-  // init select
-  $('citySelect').value = paramCity();
-  $('citySelect').addEventListener('change', e => {
-    const v = e.target.value;
-    const p = new URLSearchParams(location.search);
-    if (v==='ca') p.delete('city'); else p.set('city', v);
-    location.href = location.pathname + (p.toString()?`?${p}`:'');
-  });
-
-  // Buttons
-  $('regenBtn').addEventListener('click', () => { data.generated_at_iso = nowISO(); render(); });
-
-  $('reloadBtn').addEventListener('click', async () => {
-    const btn = $('reloadBtn'); const old = btn.textContent;
-    btn.textContent = 'Reloading…'; btn.disabled = true;
-    await load(true);
-    btn.textContent = old; btn.disabled = false;
-  });
-
-  $('downloadBtn').addEventListener('click', () => {
-    const c = paramCity();
-    const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `highlights.${c}.json`;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(()=>URL.revokeObjectURL(a.href), 500);
-  });
-
-  // Split combined -> per-city and download
-  $('splitBtn').addEventListener('click', async () => {
-    const COMBINED_URL = '/highlights.ca.json?nocache=' + Date.now();
-    const CODES = ['yvr','yyz','yul','yeg','yyc'];
-
-    const save = (name, obj) => {
-      const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob); a.download = name;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 500);
-    };
-
-    let combined;
-    try {
-      const res = await fetch(COMBINED_URL, { cache: 'no-store' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      combined = await res.json();
-    } catch (err) {
-      alert('Could not fetch /highlights.ca.json. Make sure it exists on your site.');
-      console.error(err); return;
-    }
-
-    const U = s => (s||'').toString().trim().toUpperCase();
-    const matches = (t, code) => U(t?.route?.origin || t?.origin || t?.city || t?.code || t?.airport) === U(code);
-    const sliceBy = (src, code) => {
-      if (Array.isArray(src)) return src.filter(t => matches(t, code));
-      if (Array.isArray(src?.tiles)) return src.tiles.filter(t => matches(t, code));
-      if (Array.isArray(src?.items)) return src.items.filter(t => matches(t, code));
-      if (src?.cities?.[U(code)]) {
-        const c = src.cities[U(code)];
-        return Array.isArray(c?.tiles) ? c.tiles : (Array.isArray(c) ? c : []);
-      }
-      if (src?.[U(code)]) {
-        const c = src[U(code)];
-        return Array.isArray(c?.tiles) ? c.tiles : (Array.isArray(c) ? c : []);
-      }
-      return [];
-    };
-
-    const results = [];
-    for (const code of CODES) {
-      const tiles = sliceBy(combined, code);
-      const out = Array.isArray(combined)
-        ? tiles
-        : { ttl_hours: combined.ttl_hours ?? 48,
-            generated_at_iso: combined.generated_at_iso ?? combined.generated ?? null,
-            tiles };
-      save(`highlights.${code}.json`, out);
-      results.push({ city: code.toUpperCase(), tiles: tiles.length });
-    }
-    console.table(results);
-    alert('Downloads started (allow multiple downloads if prompted).');
-  });
-
-  // ---- load/render
-  let data = { ttl_hours: 48, generated_at_iso: nowISO(), tiles: [] };
-
-  async function load(force = false){
-    try{
-      const url = buildUrl();
-      const res = await fetch(url, {cache: force ? 'reload' : 'no-store'});
-      if(!res.ok) throw new Error(`HTTP ${res.status}`);
-      const raw = await res.json();
-      if (Array.isArray(raw)) data.tiles = raw;
-      else if (raw && typeof raw === 'object'){
-        data.ttl_hours = raw.ttl_hours ?? data.ttl_hours;
-        data.generated_at_iso = raw.generated_at_iso ?? raw.generated ?? data.generated_at_iso;
-        data.tiles = Array.isArray(raw.tiles) ? raw.tiles : (Array.isArray(raw.items) ? raw.items : []);
-      }
-      $('error').style.display = 'none';
-    }catch(err){
-      $('error').style.display = '';
-      $('error').textContent = `Could not load ${buildUrl().replace(/\?nocache=.*/,'')}: ${err.message}. Using a fresh empty dataset.`;
-    }
-    render();
-  }
-
-  function bindInput(el, obj, key, transform = v=>v){
-    el.value = obj[key] ?? '';
-    el.addEventListener('input', ()=>{ obj[key] = transform(el.value); updateMeta(); });
-  }
-  function updateMeta(){
-    const c = paramCity();
-    $('meta').textContent = `dataset: highlights.${c}.json • generated: ${fmtDate(data.generated_at_iso)} • ttl: ${data.ttl_hours}h • tiles: ${data.tiles.length}`;
-  }
-
-  function render(){
-    const grid = $('grid'); grid.innerHTML = '';
-    updateMeta();
-
-    data.tiles = [...data.tiles].sort((a,b)=>String(a.title||'').localeCompare(String(b.title||'')));
-
-    data.tiles.forEach((t, idx) => {
-      t.route = t.route || {};
-      t.date_range = t.date_range || {};
-
-      const card = document.createElement('section'); card.className = 'card';
-
-      const title = document.createElement('div');
-      title.innerHTML = `<label>Title</label>`;
-      const titleInput = document.createElement('input');
-      bindInput(titleInput, t, 'title');
-      title.appendChild(titleInput);
-      card.appendChild(title);
-
-      const row1 = document.createElement('div'); row1.className = 'row';
-      const oWrap = document.createElement('div');
-      oWrap.innerHTML = `<label>Origin</label>`;
-      const o = document.createElement('input');
-      o.placeholder = 'YVR'; o.value = t.route.origin || t.origin || '';
-      o.addEventListener('input', ()=>{ t.route.origin = o.value.toUpperCase(); updateMeta(); });
-      oWrap.appendChild(o); row1.appendChild(oWrap);
-
-      const dWrap = document.createElement('div');
-      dWrap.innerHTML = `<label>Destination</label>`;
-      const d = document.createElement('input');
-      d.placeholder = 'HKG'; d.value = t.route.destination || t.destination || '';
-      d.addEventListener('input', ()=>{ t.route.destination = d.value.toUpperCase(); updateMeta(); });
-      dWrap.appendChild(d); row1.appendChild(dWrap);
-      card.appendChild(row1);
-
-      const row2 = document.createElement('div'); row2.className = 'row';
-      const fromW = document.createElement('div'); fromW.innerHTML = `<label>From</label>`;
-      const from = document.createElement('input'); from.type='date';
-      from.value = fmtDate(t.date_range.from || t.from || '');
-      from.addEventListener('change', ()=>{ t.date_range.from = from.value; updateMeta(); });
-      fromW.appendChild(from); row2.appendChild(fromW);
-
-      const toW = document.createElement('div'); toW.innerHTML = `<label>To</label>`;
-      const to = document.createElement('input'); to.type='date';
-      to.value = fmtDate(t.date_range.to || t.to || '');
-      to.addEventListener('change', ()=>{ t.date_range.to = to.value; updateMeta(); });
-      toW.appendChild(to); row2.appendChild(toW);
-      card.appendChild(row2);
-
-      const row3 = document.createElement('div'); row3.innerHTML = `<label>Price (display)</label>`;
-      const price = document.createElement('input'); price.placeholder='TBD';
-      bindInput(price, t, 'price_display');
-      row3.appendChild(price); card.appendChild(row3);
-
-      const row4 = document.createElement('div'); row4.innerHTML = `<label>Tags (comma separated)</label>`;
-      const tags = document.createElement('input'); tags.placeholder='international, asia, longhaul';
-      tags.value = Array.isArray(t.tags) ? t.tags.join(', ') : '';
-      tags.addEventListener('input', ()=>{ t.tags = tags.value.split(',').map(s=>s.trim()).filter(Boolean); updateMeta(); });
-      row4.appendChild(tags); card.appendChild(row4);
-
-      const row5 = document.createElement('div'); row5.className='row';
-      const refreshBtn = document.createElement('button');
-      refreshBtn.textContent = 'Stamp last updated';
-      refreshBtn.addEventListener('click', ()=>{ t.last_refreshed_iso = nowISO(); alert('Stamped.'); });
-      row5.appendChild(refreshBtn);
-
-      const removeBtn = document.createElement('button');
-      removeBtn.textContent = 'Remove tile';
-      removeBtn.addEventListener('click', ()=>{ data.tiles.splice(idx,1); render(); });
-      row5.appendChild(removeBtn);
-
-      card.appendChild(row5);
-      grid.appendChild(card);
-    });
-
-    const add = document.createElement('section'); add.className = 'card';
-    const btn = document.createElement('button'); btn.textContent = 'Add new tile';
-    btn.addEventListener('click', ()=>{
-      data.tiles.push({
-        id: `tile-${Date.now()}`, title: '', route:{origin:'',destination:''},
-        date_range:{from:'',to:''}, price_display:'TBD', tags:[]
+  <script>
+    const $ = (sel, el=document) => el.querySelector(sel);
+    const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+    const blobDL = (name, obj) => {
+      const blob = new Blob([JSON.stringify(obj, null, 2)], {type:'application/json'});
+      const a = Object.assign(document.createElement('a'), {
+        href: URL.createObjectURL(blob), download: name
       });
-      render();
-    });
-    add.appendChild(btn); $('grid').appendChild(add);
-  }
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(a.href), 500);
+    };
 
-  load();
-</script>
+    let city = 'ca';
+    let data = null;   // loaded dataset object
+    let tiles = [];    // array reference inside data
+
+    const setError = (msg) => {
+      const box = $('#errorBox');
+      if (!msg) { box.style.display='none'; box.textContent=''; return; }
+      box.style.display='block'; box.textContent = msg;
+    };
+
+    function setMeta() {
+      const gen = data?.generated_at_iso || '—';
+      const ttl = data?.ttl_hours ?? '—';
+      $('#metaLine').textContent = `dataset: highlights.${city}.json • generated: ${gen} • ttl: ${ttl}h • tiles: ${tiles.length}`;
+    }
+
+    function render() {
+      const grid = $('#grid');
+      grid.innerHTML = '';
+      tiles.forEach((t, idx) => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <div class="muted">ID: ${t.id || ''}</div>
+          <div><label>Title</label><input type="text" value="${(t.title||'').replaceAll('"','&quot;')}" data-k="title"></div>
+
+          <div class="row">
+            <div><label>Origin</label><input type="text" value="${t.route?.origin||''}" data-k="route.origin"></div>
+            <div><label>Destination</label><input type="text" value="${t.route?.destination||''}" data-k="route.destination"></div>
+          </div>
+
+          <div class="row">
+            <div><label>From</label><input type="date" value="${t.date_range?.from||''}" data-k="date_range.from"></div>
+            <div><label>To</label><input type="date" value="${t.date_range?.to||''}" data-k="date_range.to"></div>
+          </div>
+
+          <div class="row">
+            <div><label>Price (display)</label><input type="text" value="${t.price_display||'TBD'}" data-k="price_display"></div>
+            <div><label>Tags (comma separated)</label><input type="text" value="${(Array.isArray(t.tags)?t.tags:[]).join(', ')}" data-k="tags"></div>
+          </div>
+
+          <div class="actions">
+            <button data-act="stamp">Stamp last updated</button>
+            <button data-act="remove">Remove tile</button>
+          </div>
+        `;
+
+        // wire up inputs
+        card.addEventListener('input', (e) => {
+          const k = e.target.dataset.k;
+          if (!k) return;
+          const path = k.split('.');
+          let ref = t;
+          for (let i=0;i<path.length-1;i++){
+            const key = path[i];
+            ref[key] = ref[key] ?? {};
+            ref = ref[key];
+          }
+          const leaf = path[path.length-1];
+          if (leaf === 'tags') {
+            ref[leaf] = e.target.value.split(',').map(s=>s.trim()).filter(Boolean);
+          } else {
+            ref[leaf] = e.target.value;
+          }
+          // keep a simple slug if missing
+          if (!t.slug && t.route?.origin && t.route?.destination && t.title) {
+            const code = city.toLowerCase();
+            const base = `${t.route.origin}-${t.route.destination}-${(t.title||'').toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9\-]/g,'')}`.slice(0,48);
+            t.slug = `${code}-${base}`.replace(/--+/g,'-');
+          }
+          setMeta();
+        });
+
+        // actions
+        card.addEventListener('click', (e) => {
+          const act = e.target.dataset.act;
+          if (!act) return;
+          if (act === 'stamp') {
+            t.last_refreshed_iso = new Date().toISOString();
+            setMeta();
+          } else if (act === 'remove') {
+            tiles.splice(idx,1);
+            render(); setMeta();
+          }
+        });
+
+        grid.appendChild(card);
+      });
+    }
+
+    async function load() {
+      setError('');
+      const res = await fetch(`/highlights.${city}.json?nocache=${Date.now()}`);
+      if (!res.ok) {
+        setError(`Failed to load highlights.${city}.json (HTTP ${res.status})`);
+        return;
+      }
+      data = await res.json();
+      tiles = Array.isArray(data.tiles) ? data.tiles
+            : (Array.isArray(data.items) ? data.items : []);
+      setMeta();
+      render();
+    }
+
+    // init
+    (async () => {
+      const qs = new URLSearchParams(location.search);
+      city = (qs.get('city') || 'ca').toLowerCase();
+      const sel = $('#citySelect'); sel.value = city;
+      sel.addEventListener('change', () => {
+        const p = new URL(location.href);
+        p.searchParams.set('city', sel.value);
+        p.searchParams.set('v', Date.now());
+        location.href = p.toString();
+      });
+      $('#viewSite').href = `/?city=${encodeURIComponent(city)}&v=${Date.now()}`;
+      await load();
+    })();
+
+    // controls
+    $('#regenBtn').addEventListener('click', () => {
+      if (!data) return;
+      data.generated_at_iso = new Date().toISOString();
+      setMeta();
+    });
+
+    $('#downloadBtn').addEventListener('click', () => {
+      if (!data) return;
+      // ensure tiles are stored under .tiles
+      if (!Array.isArray(data.tiles)) data.tiles = tiles;
+      blobDL(`highlights.${city}.json`, data);
+    });
+
+    $('#addBtn').addEventListener('click', () => {
+      if (!data) return;
+      const title = $('#new_title').value.trim();
+      const origin = $('#new_origin').value.trim().toUpperCase();
+      const dest   = $('#new_dest').value.trim().toUpperCase();
+      const from   = $('#new_from').value;
+      const to     = $('#new_to').value;
+      const price  = $('#new_price').value.trim() || 'TBD';
+      const tags   = $('#new_tags').value.split(',').map(s=>s.trim()).filter(Boolean);
+
+      if (!origin || !dest || !title) { setError('Please provide Title, Origin, and Destination.'); return; }
+
+      const id = `${origin}-${dest}-${(title||'').toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9\-]/g,'')}`.slice(0,48);
+      const slug = `${city}-${id}`.replace(/--+/g,'-');
+
+      tiles.push({
+        id, title,
+        route:{origin, destination:dest},
+        date_range:{from, to},
+        price_display:price,
+        source:'cached',
+        last_refreshed_iso:null,
+        slug,
+        image_hint:'',
+        tags
+      });
+      // clear inputs
+      ['new_title','new_origin','new_dest','new_from','new_to','new_price','new_tags'].forEach(id=>{ $('#'+id).value=''; });
+      setMeta(); render();
+    });
+  </script>
 </body>
 </html>
