@@ -110,4 +110,100 @@
     el.addEventListener('input', ()=>{ obj[key] = transform(el.value); updateMeta(); });
   }
   function updateMeta(){
-    $('meta').textContent = `dataset: highlights.${city}.json • generated: ${fmtDate(data.generated_at_iso)} • ttl: ${data.ttl_hours}h • tiles: ${data.tiles._
+    $('meta').textContent = `dataset: highlights.${city}.json • generated: ${fmtDate(data.generated_at_iso)} • ttl: ${data.ttl_hours}h • tiles: ${data.tiles.length}`;
+  }
+
+  function render(){
+    const grid = $('grid'); grid.innerHTML = '';
+    updateMeta();
+
+    // keep a stable order
+    data.tiles = [...data.tiles].sort((a,b)=>String(a.title||'').localeCompare(String(b.title||'')));
+
+    data.tiles.forEach((t, idx) => {
+      t.route = t.route || {};
+      t.date_range = t.date_range || {};
+
+      const card = document.createElement('section'); card.className = 'card';
+
+      const title = document.createElement('div');
+      title.innerHTML = `<label>Title</label>`;
+      const titleInput = document.createElement('input');
+      bindInput(titleInput, t, 'title');
+      title.appendChild(titleInput);
+      card.appendChild(title);
+
+      const row1 = document.createElement('div'); row1.className = 'row';
+      const oWrap = document.createElement('div');
+      oWrap.innerHTML = `<label>Origin</label>`;
+      const o = document.createElement('input');
+      o.placeholder = 'YVR'; o.value = t.route.origin || t.origin || '';
+      o.addEventListener('input', ()=>{ t.route.origin = o.value.toUpperCase(); updateMeta(); });
+      oWrap.appendChild(o); row1.appendChild(oWrap);
+
+      const dWrap = document.createElement('div');
+      dWrap.innerHTML = `<label>Destination</label>`;
+      const d = document.createElement('input');
+      d.placeholder = 'HKG'; d.value = t.route.destination || t.destination || '';
+      d.addEventListener('input', ()=>{ t.route.destination = d.value.toUpperCase(); updateMeta(); });
+      dWrap.appendChild(d); row1.appendChild(dWrap);
+      card.appendChild(row1);
+
+      const row2 = document.createElement('div'); row2.className = 'row';
+      const fromW = document.createElement('div'); fromW.innerHTML = `<label>From</label>`;
+      const from = document.createElement('input'); from.type='date';
+      from.value = fmtDate(t.date_range.from || t.from || '');
+      from.addEventListener('change', ()=>{ t.date_range.from = from.value; updateMeta(); });
+      fromW.appendChild(from); row2.appendChild(fromW);
+
+      const toW = document.createElement('div'); toW.innerHTML = `<label>To</label>`;
+      const to = document.createElement('input'); to.type='date';
+      to.value = fmtDate(t.date_range.to || t.to || '');
+      to.addEventListener('change', ()=>{ t.date_range.to = to.value; updateMeta(); });
+      toW.appendChild(to); row2.appendChild(toW);
+      card.appendChild(row2);
+
+      const row3 = document.createElement('div'); row3.innerHTML = `<label>Price (display)</label>`;
+      const price = document.createElement('input'); price.placeholder='TBD';
+      bindInput(price, t, 'price_display');
+      row3.appendChild(price); card.appendChild(row3);
+
+      const row4 = document.createElement('div'); row4.innerHTML = `<label>Tags (comma separated)</label>`;
+      const tags = document.createElement('input'); tags.placeholder='international, asia, longhaul';
+      tags.value = Array.isArray(t.tags) ? t.tags.join(', ') : '';
+      tags.addEventListener('input', ()=>{ t.tags = tags.value.split(',').map(s=>s.trim()).filter(Boolean); updateMeta(); });
+      row4.appendChild(tags); card.appendChild(row4);
+
+      const row5 = document.createElement('div'); row5.className='row';
+      const refreshBtn = document.createElement('button');
+      refreshBtn.textContent = 'Stamp last updated';
+      refreshBtn.addEventListener('click', ()=>{ t.last_refreshed_iso = nowISO(); alert('Stamped.'); });
+      row5.appendChild(refreshBtn);
+
+      const removeBtn = document.createElement('button');
+      removeBtn.textContent = 'Remove tile';
+      removeBtn.addEventListener('click', ()=>{ data.tiles.splice(idx,1); render(); });
+      row5.appendChild(removeBtn);
+
+      card.appendChild(row5);
+      grid.appendChild(card);
+    });
+
+    // Add-new tile card
+    const add = document.createElement('section'); add.className = 'card';
+    const btn = document.createElement('button'); btn.textContent = 'Add new tile';
+    btn.addEventListener('click', ()=>{
+      data.tiles.push({
+        id: `tile-${Date.now()}`, title: '', route:{origin:'',destination:''},
+        date_range:{from:'',to:''}, price_display:'TBD', tags:[]
+      });
+      render();
+    });
+    add.appendChild(btn); $('grid').appendChild(add);
+  }
+
+  // kick it
+  load();
+</script>
+</body>
+</html>
