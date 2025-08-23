@@ -1,69 +1,113 @@
-// === SPLIT combined highlights.ca.json into per-city files ===
-// Runs in the Console on your live site. Make sure multiple downloads are allowed.
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Harvester Highlights — Editor</title>
+<style>
+  :root{--bg:#0b0e13;--card:#151a22;--muted:#91a0b6;--text:#eaf0ff;--accent:#9dd2ff;--ring:#2b364c;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+  header{padding:20px} h1{margin:0 0 6px} .meta{color:var(--muted);font-size:13px}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:0 20px 16px}
+  .toolbar select,.toolbar button{background:#0f131a;border:1px solid var(--ring);color:var(--text);padding:8px 10px;border-radius:10px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;padding:0 20px 40px;max-width:1200px;margin:0 auto}
+  .card{background:var(--card);border:1px solid var(--ring);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:10px}
+  label{font-size:12px;color:var(--muted)} input,textarea{width:100%;background:#0f131a;color:var(--text);border:1px solid var(--ring);border-radius:10px;padding:8px}
+  .row{display:flex;gap:8px} .row > *{flex:1} .muted{color:var(--muted)} .err{margin:0 20px 16px;background:#2a0f16;color:#ffd8de;border:1px solid #c74a5a;padding:10px;border-radius:10px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Harvester Highlights — Editor</h1>
+  <div id="meta" class="meta"></div>
+</header>
 
-(async () => {
-  const COMBINED_URL = '/highlights.ca.json?nocache=' + Date.now();
-  const CODES = ['yvr','yyz','yul','yeg','yyc']; // add/remove codes as needed
+<div class="toolbar">
+  <label for="citySelect" class="muted">Dataset:</label>
+  <select id="citySelect">
+    <option value="ca">Canada (combined)</option>
+    <option value="yvr">YVR — Vancouver</option>
+    <option value="yyz">YYZ — Toronto</option>
+    <option value="yul">YUL — Montréal</option>
+    <option value="yeg">YEG — Edmonton</option>
+    <option value="yyc">YYC — Calgary</option>
+  </select>
 
-  // Save helper
-  const save = (name, obj) => {
-    const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+  <button id="regenBtn">Regenerate dataset timestamp</button>
+  <button id="downloadBtn">Download JSON</button>
+  <span class="muted">•</span>
+  <a href="/" style="color:var(--accent)">View site</a>
+</div>
+
+<div id="error" class="err" style="display:none"></div>
+<main id="grid" class="grid" aria-live="polite"></main>
+
+<script>
+  // ---- params / dataset url
+  const qs = new URLSearchParams(location.search);
+  const allow = ['ca','yvr','yyz','yul','yeg','yyc'];
+  const chosen = (qs.get('city')||'ca').toLowerCase();
+  const city = allow.includes(chosen) ? chosen : 'ca';
+  const DATA_URL = `/highlights.${city}.json?nocache=${Date.now()}`;
+
+  // ---- helpers
+  const $ = id => document.getElementById(id);
+  const fmtDate = iso => {
+    if(!iso) return '—';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(iso))) return iso;
+    return new Date(iso).toISOString().slice(0,10);
+  };
+  const nowISO = () => new Date().toISOString();
+
+  $('citySelect').value = city;
+  $('citySelect').addEventListener('change', e => {
+    const v = e.target.value;
+    const p = new URLSearchParams(location.search);
+    if (v==='ca') p.delete('city'); else p.set('city', v);
+    location.href = location.pathname + (p.toString()?`?${p}`:'');
+  });
+
+  $('regenBtn').addEventListener('click', () => {
+    data.generated_at_iso = nowISO();
+    render();
+  });
+
+  $('downloadBtn').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = name;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 500);
-  };
+    a.download = `highlights.${city}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 500);
+  });
 
-  // Fetch combined JSON
-  let data;
-  try {
-    const res = await fetch(COMBINED_URL, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    data = await res.json();
-  } catch (err) {
-    console.error('Failed to fetch', COMBINED_URL, err);
-    alert('Could not fetch /highlights.ca.json. Open your LIVE site (not GitHub) and try again.');
-    return;
+  // ---- load
+  let data = { ttl_hours: 48, generated_at_iso: nowISO(), tiles: [] };
+
+  async function load(){
+    try{
+      const res = await fetch(DATA_URL, {cache:'no-store'});
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      const raw = await res.json();
+      if (Array.isArray(raw)) data.tiles = raw;
+      else if (raw && typeof raw === 'object'){
+        data.ttl_hours = raw.ttl_hours ?? data.ttl_hours;
+        data.generated_at_iso = raw.generated_at_iso ?? raw.generated ?? data.generated_at_iso;
+        data.tiles = Array.isArray(raw.tiles) ? raw.tiles : (Array.isArray(raw.items) ? raw.items : []);
+      }
+      $('error').style.display = 'none';
+    }catch(err){
+      $('error').style.display = '';
+      $('error').textContent = `Could not load ${DATA_URL.replace(/\?nocache=.*/,'')}: ${err.message}. Using a fresh empty dataset.`;
+      // keep default empty data
+    }
+    render();
   }
 
-  // Helpers to slice by city code across several shapes
-  const U = s => (s || '').toString().trim().toUpperCase();
-  const matches = (t, code) =>
-    U(t?.route?.origin || t?.origin || t?.city || t?.code || t?.airport) === U(code);
-
-  const sliceBy = (source, code) => {
-    if (Array.isArray(source)) return source.filter(t => matches(t, code));
-    if (Array.isArray(source?.tiles)) return source.tiles.filter(t => matches(t, code));
-    if (Array.isArray(source?.items)) return source.items.filter(t => matches(t, code));
-    if (source?.cities?.[U(code)]) {
-      const c = source.cities[U(code)];
-      return Array.isArray(c?.tiles) ? c.tiles : (Array.isArray(c) ? c : []);
-    }
-    if (source?.[U(code)]) {
-      const c = source[U(code)];
-      return Array.isArray(c?.tiles) ? c.tiles : (Array.isArray(c) ? c : []);
-    }
-    return [];
-  };
-
-  const results = [];
-  for (const code of CODES) {
-    const tiles = sliceBy(data, code);
-    // keep basic meta if the combined file had it
-    const out = Array.isArray(data)
-      ? tiles
-      : { ttl_hours: data.ttl_hours ?? 48,
-          generated_at_iso: data.generated_at_iso ?? data.generated ?? null,
-          tiles };
-
-    const file = `highlights.${code}.json`;
-    save(file, out);
-    results.push({ city: code.toUpperCase(), tiles: tiles.length, file });
+  function bindInput(el, obj, key, transform = v=>v){
+    el.value = obj[key] ?? '';
+    el.addEventListener('input', ()=>{ obj[key] = transform(el.value); updateMeta(); });
   }
-
-  console.table(results);
-  console.log('✅ Downloads started. If prompted, click "Continue allowing automatic downloads".');
-})();
+  function updateMeta(){
+    $('meta').textContent = `dataset: highlights.${city}.json • generated: ${fmtDate(data.generated_at_iso)} • ttl: ${data.ttl_hours}h • tiles: ${data.tiles._
