@@ -83,4 +83,85 @@
 
     // Read ?city from URL or default
     const params = new URLSearchParams(location.search);
-    const initialCity = (params.get('city') |
+    const initialCity = (params.get('city') || 'ca').toLowerCase();
+
+    const citySelect = $('#city');
+    citySelect.value = ['ca','yvr','yyz','yul','yeg','yyc'].includes(initialCity) ? initialCity : 'ca';
+
+    async function load(){
+      const city = citySelect.value;
+      const file = city === 'ca' ? 'highlights.ca.json' : `highlights.${city}.json`;
+      const url = `${location.origin}/${file}?nocache=${Date.now()}`;
+
+      // Update action links
+      $('#downloadBtn').href = url.replace(/\?nocache=.*/,'');
+      $('#openEditor').href = `${location.origin}/editor.html?city=${city === 'ca' ? 'yvr' : city}`;
+
+      // Fetch and render
+      $('#banner').textContent = 'loading…';
+      $('#statusNote').textContent = '';
+      $('#grid').innerHTML = '';
+      $('#empty').hidden = true;
+
+      let data, ok = false, err = null;
+      try{
+        const res = await fetch(url, { cache:'no-store' });
+        ok = res.ok;
+        data = await res.json();
+      }catch(e){ err = e; }
+
+      if(!ok || !data){
+        $('#banner').textContent = `Failed to load ${file}`;
+        $('#statusNote').textContent = err ? String(err) : '';
+        $('#empty').hidden = false;
+        return;
+      }
+
+      const tiles = Array.isArray(data.tiles) ? data.tiles : [];
+      const gen = data.generated_at_iso || '—';
+      const ttl = data.ttl_hours ?? '—';
+      $('#banner').textContent = `dataset: ${file} • generated: ${fmtDate(gen)} • ttl: ${ttl}h • tiles: ${tiles.length}`;
+
+      if(!tiles.length){
+        $('#empty').hidden = false;
+        return;
+      }
+
+      const grid = $('#grid');
+      for (const t of tiles){
+        const div = document.createElement('div');
+        div.className = 'card';
+        const route = t.route || {};
+        const origin = route.origin || '';
+        const dest = route.destination || '';
+        const from = t.date_range?.from;
+        const to = t.date_range?.to;
+        const tags = (t.tags || []).slice(0, 6);
+        const price = t.price_display || 'TBD';
+        const last = t.last_refreshed_iso ? fmtDate(t.last_refreshed_iso) : '—';
+
+        div.innerHTML = `
+          <div class="title">${t.title || `${origin} → ${dest}`}</div>
+          <div class="muted">${origin} → ${dest}</div>
+          <div class="row muted">Dates: <span class="pill">${fmtDate(from)}</span> → <span class="pill">${fmtDate(to)}</span></div>
+          <div class="row"><strong>Price:</strong> <span class="pill">${price}</span></div>
+          <div class="row muted">Last updated: <span class="pill">${last}</span></div>
+          <div class="row">
+            ${tags.map(x => `<span class="pill">${x}</span>`).join('')}
+          </div>
+        `;
+        grid.appendChild(div);
+      }
+
+      // push current selection into URL (no reload)
+      const u = new URL(location.href);
+      u.searchParams.set('city', city);
+      history.replaceState(null, '', u);
+    }
+
+    citySelect.addEventListener('change', load);
+    // initial render
+    load();
+  </script>
+</body>
+</html>
